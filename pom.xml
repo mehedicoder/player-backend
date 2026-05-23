@@ -14,7 +14,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.player</groupId>
+    <groupId>com.game</groupId>
     <artifactId>player-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>player-backend</name>

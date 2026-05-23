@@ -104,7 +104,52 @@ What should the reviewer check?:
 - Add API documentation using OpenAPI
 
 ### Entries
-_No entries yet._
+### Implement Core Player Profile Vertical Slice
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-22 20:10 +02:00
+Which files changed?:
+- `src/main/java/com/player/backend/PlayerBackendApplication.java`
+- `src/main/java/com/player/backend/config/SecurityConfig.java`
+- `src/main/java/com/player/backend/common/api/ApiErrorResponse.java`
+- `src/main/java/com/player/backend/common/api/GlobalExceptionHandler.java`
+- `src/main/java/com/player/backend/player/domain/PlayerProfile.java`
+- `src/main/java/com/player/backend/player/repository/PlayerProfileRepository.java`
+- `src/main/java/com/player/backend/player/api/CreatePlayerRequest.java`
+- `src/main/java/com/player/backend/player/api/UpdatePlayerProfileRequest.java`
+- `src/main/java/com/player/backend/player/api/PlayerProfileResponse.java`
+- `src/main/java/com/player/backend/player/api/PlayerProfileController.java`
+- `src/main/java/com/player/backend/player/service/PlayerNotFoundException.java`
+- `src/main/java/com/player/backend/player/service/PlayerProfileCache.java`
+- `src/main/java/com/player/backend/player/service/PlayerProfileService.java`
+- `src/main/resources/db/migration/V1__create_player_profile.sql`
+- `src/test/java/com/player/backend/player/service/PlayerProfileServiceTest.java`
+- `src/test/java/com/player/backend/player/PlayerProfileIntegrationTest.java`
+- `tasks.md`
+
+What decisions were made?:
+- Included create/seed endpoint in Phase 2 scope.
+- Implemented cache-aside on profile reads with Redis fallback to DB.
+- Kept MySQL as source of truth and persisted updates before cache writes.
+
+What was skipped?:
+- No roadmap checkboxes were marked complete in this step.
+- No authentication/session (Phase 3+) work included.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false test` passed.
+- Integration test exercised MySQL + Redis via Testcontainers.
+
+What problems happened?:
+- Integration logs include expected Redis reconnect warnings during container shutdown.
+- No functional test failures occurred.
+
+What should the reviewer check?:
+- API contracts and validation for create/read/update endpoints.
+- Cache fallback correctness when Redis read fails.
+- SQL schema constraints/indexes and migration safety.
+- Security posture of temporary permit-all filter chain.
 
 ---
 
