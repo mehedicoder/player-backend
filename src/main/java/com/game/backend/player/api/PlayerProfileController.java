@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for player profile create/read/update operations.
+ */
 @RestController
 @Validated
 @RequestMapping("/api/v1/players")
@@ -29,6 +32,9 @@ public class PlayerProfileController {
         this.service = service;
     }
 
+    /**
+     * Creates or seeds a player profile.
+     */
     @PostMapping
     @Operation(
         summary = "Create or seed player profile",
@@ -42,6 +48,9 @@ public class PlayerProfileController {
         return service.createPlayer(request);
     }
 
+    /**
+     * Returns player profile by player identifier.
+     */
     @GetMapping("/{playerId}")
     @Operation(
         summary = "Get player profile by ID",
@@ -55,6 +64,9 @@ public class PlayerProfileController {
         return service.getProfile(playerId);
     }
 
+    /**
+     * Updates mutable player profile fields.
+     */
     @PutMapping("/{playerId}")
     @Operation(
         summary = "Update player profile",

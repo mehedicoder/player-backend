@@ -43,8 +43,10 @@ Before implementing any task, read the relevant project documents:
 - `specs/database-design.md` if available
 - `specs/local-development.md` if available
 - `tasks.md` if available
-- `reports/review-report.md` if fixing review comments
-- `reports/validation-report.md` if fixing validation issues
+- `specs/YYYY-MM-DD-<feature-name>/review-report.md` if fixing implementation review comments
+- `specs/YYYY-MM-DD-<feature-name>/validation-report.md` if fixing implementation validation issues
+- `specs/YYYY-MM-DD-<feature-name>/spec-review-report.md` if fixing feature-spec review comments
+- `specs/YYYY-MM-DD-<feature-name>/spec-validation-report.md` if fixing feature-spec validation issues
 
 If required architecture or acceptance criteria are missing or unclear, ask for clarification before making major design decisions.
 
@@ -170,6 +172,17 @@ Follow these principles:
 - Use Kafka only when approved by the roadmap and architecture.
 - Keep logs structured and safe.
 - Do not log secrets, tokens, passwords, or sensitive personal data.
+
+## JavaDoc Standards
+
+For Java production code you add or change:
+
+- Add JavaDoc on all public classes and interfaces.
+- Add JavaDoc on all public methods that are part of the service/controller/security contract.
+- Keep JavaDoc concise and behavior-focused (intent, inputs/outputs, error behavior).
+- Do not add noisy JavaDoc to trivial private helpers.
+
+Code is not done if required JavaDoc is missing.
 
 ---
 

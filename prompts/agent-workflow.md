@@ -46,14 +46,16 @@ Agents may suggest improvements, risks, or alternatives, but they do not own arc
 
 Before working, agents should read the relevant project documents:
 
-- `spec/mission.md`
-- `spec/tech-stack.md`
-- `spec/roadmap.md`
-- `spec/architecture.md` if available
-- `spec/api-contract.md` if available
-- `spec/database-design.md` if available
-- `spec/local-development.md` if available
+- `specs/mission.md`
+- `specs/tech-stack.md`
+- `specs/roadmap.md`
+- `specs/architecture.md` if available
+- `specs/api-contract.md` if available
+- `specs/database-design.md` if available
+- `specs/local-development.md` if available
 - `tasks.md` if available
+- Active feature spec review report in `specs/YYYY-MM-DD-<feature-name>/spec-review-report.md` if available
+- Active feature spec validation report in `specs/YYYY-MM-DD-<feature-name>/spec-validation-report.md` if available
 - Active feature review report in `specs/YYYY-MM-DD-<feature-name>/review-report.md` if available
 - Active feature validation report in `specs/YYYY-MM-DD-<feature-name>/validation-report.md` if available
 
@@ -70,7 +72,7 @@ Main outputs:
 - Configuration files
 - Database migrations
 - Documentation updates
-- `docs/tasks.md`
+- `tasks.md`
 
 The Builder Agent must follow the human-approved architecture and must not make major architecture changes without explicit human approval.
 
@@ -82,7 +84,8 @@ The Reviewer Agent reviews the implementation like a senior backend engineer and
 
 Main output:
 
-- `specs/YYYY-MM-DD-<feature-name>/review-report.md`
+- Spec review: `specs/YYYY-MM-DD-<feature-name>/spec-review-report.md`
+- Implementation review: `specs/YYYY-MM-DD-<feature-name>/review-report.md`
 
 The Reviewer Agent checks:
 
@@ -111,7 +114,8 @@ The Validation Agent verifies that the implementation works correctly.
 
 Main output:
 
-- `specs/YYYY-MM-DD-<feature-name>/validation-report.md`
+- Spec validation: `specs/YYYY-MM-DD-<feature-name>/spec-validation-report.md`
+- Implementation validation: `specs/YYYY-MM-DD-<feature-name>/validation-report.md`
 
 The Validation Agent checks:
 
@@ -135,13 +139,15 @@ The Validation Agent validates behavior. It does not approve architecture change
 ## Standard Workflow
 
 1. Human Architect defines or approves a roadmap task.
-2. Builder Agent implements one vertical slice.
-3. Builder Agent updates `docs/tasks.md`.
-4. Reviewer Agent reviews the latest git diff.
-5. Builder Agent fixes required review findings.
-6. Validation Agent validates tests, edge cases, and acceptance criteria.
-7. Human Architect performs final review.
-8. Human Architect commits, pushes, merges, or deploys.
+2. Reviewer Agent performs feature-spec review and writes `spec-review-report.md`.
+3. Validation Agent performs feature-spec validation and writes `spec-validation-report.md`.
+4. Builder Agent implements one vertical slice.
+5. Builder Agent updates `tasks.md`.
+6. Reviewer Agent reviews the latest git diff and writes `review-report.md`.
+7. Builder Agent fixes required review findings.
+8. Validation Agent validates tests, edge cases, and acceptance criteria in `validation-report.md`.
+9. Human Architect performs final review.
+10. Human Architect commits, pushes, merges, or deploys.
 
 ---
 
@@ -159,7 +165,7 @@ The Validation Agent validates behavior. It does not approve architecture change
 
 ## Roadmap Rules
 
-`docs/roadmap.md` tracks planned work and high-level status.
+`specs/roadmap.md` tracks planned work and high-level status.
 
 Use this marker style:
 

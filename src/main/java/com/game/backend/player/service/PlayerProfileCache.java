@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * Redis cache adapter for player profile payloads.
+ */
 @Component
 public class PlayerProfileCache {
 
@@ -32,6 +35,9 @@ public class PlayerProfileCache {
         this.ttl = ttl;
     }
 
+    /**
+     * Reads a cached player profile by player identifier.
+     */
     public Optional<PlayerProfile> get(String playerId) {
         String payload = redisTemplate.opsForValue().get(key(playerId));
         if (payload == null || payload.isBlank()) {
@@ -45,6 +51,9 @@ public class PlayerProfileCache {
         }
     }
 
+    /**
+     * Writes a player profile cache entry with configured TTL.
+     */
     public void put(PlayerProfile profile) {
         try {
             String payload = objectMapper.writeValueAsString(profile);

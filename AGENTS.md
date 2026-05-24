@@ -38,6 +38,53 @@ Before doing any work, read the relevant project documents:
 
 ---
 
+## Prompt Logging
+
+Prompts must be stored by scope:
+
+- General/non-feature prompts: `prompts/YEAR-MONTH-DATE.md`
+- Feature-specific prompts: `specs/YYYY-MM-DD-<feature-name>/prompts.md`
+
+### Classification Rule
+
+- Feature-specific: prompts tied to a specific feature folder or phase implementation/review/validation.
+- General/non-feature: prompts about global workflow, role prompts, repo conventions, or governance not tied to one feature folder.
+
+### General Prompt Log Rules
+
+- Log the prompt immediately when a new user instruction is received, before any implementation steps.
+- Use existing `prompts/YEAR-MONTH-DATE.md` if present.
+- If missing, create it using `prompts/2026-05-22.md` style.
+- Header:
+  - `# Prompt Log - YEAR-MONTH-DATE`
+- Entries:
+  - `## YEAR-MONTH-DATE HH:MM Europe/Berlin`
+  - prompt text on next line(s)
+- Keep entries concise and chronological (oldest to newest).
+
+### Feature Prompt Log Rules
+
+- Log the prompt immediately when a new feature-specific instruction is received, before implementation/review/validation work starts.
+- Store in active feature folder as `specs/YYYY-MM-DD-<feature-name>/prompts.md`.
+- Create file if missing.
+- Header:
+  - `# Prompt Log - YYYY-MM-DD-<feature-name>`
+- Entries:
+  - `## YEAR-MONTH-DATE HH:MM Europe/Berlin`
+  - prompt text on next line(s)
+- Keep entries concise and chronological (oldest to newest).
+- Do not duplicate feature-specific entries in `prompts/YEAR-MONTH-DATE.md`.
+
+### Prompt Logging Checklist (Mandatory)
+
+Before closing any task, verify:
+- Today's general file exists: `prompts/YEAR-MONTH-DATE.md` (if any general prompts occurred).
+- Active feature `prompts.md` exists (if feature-specific prompts occurred).
+- New prompts were appended with timestamp format:
+  - `## YEAR-MONTH-DATE HH:MM Europe/Berlin`
+
+---
+
 ## Available Agent Roles
 
 This project has role-specific prompt files under `prompts/`.
@@ -80,7 +127,8 @@ Use the Reviewer Agent for:
 - Finding Redis/Kafka misuse
 - Checking architecture compliance
 - Checking missing tests
-- Writing `reports/review-report.md`
+- Writing `specs/YYYY-MM-DD-<feature-name>/spec-review-report.md` for feature-spec reviews
+- Writing `specs/YYYY-MM-DD-<feature-name>/review-report.md` for implementation reviews
 
 The Reviewer Agent should not implement code unless explicitly requested.
 
@@ -99,7 +147,8 @@ Use the Validation Agent for:
 - Checking Docker Compose environment
 - Checking MySQL/Redis/Kafka connectivity where relevant
 - Checking application startup
-- Writing `reports/validation-report.md`
+- Writing `specs/YYYY-MM-DD-<feature-name>/spec-validation-report.md` for feature-spec validation
+- Writing `specs/YYYY-MM-DD-<feature-name>/validation-report.md` for implementation validation
 
 The Validation Agent should not implement features unless explicitly requested.
 
@@ -117,7 +166,7 @@ Use this workflow unless the human asks otherwise:
 
 1. Human selects or approves a roadmap task.
 2. Builder Agent implements the task.
-3. Builder Agent updates `docs/tasks.md`.
+3. Builder Agent updates `tasks.md`.
 4. Reviewer Agent reviews the latest git diff.
 5. Builder Agent fixes required review findings.
 6. Validation Agent validates tests and acceptance criteria.
@@ -186,6 +235,17 @@ Agents must not:
 `specs/roadmap.md` tracks planned work and high-level status.
 
 `tasks.md` records completed work and implementation history.
+
+## Report Naming Transition
+
+Current report naming standard (per feature folder):
+- `spec-review-report.md`
+- `spec-validation-report.md`
+- `review-report.md`
+- `validation-report.md`
+
+If older feature folders only contain `review-report.md` and/or `validation-report.md`,
+do not rename historical files unless explicitly requested.
 
 Use this roadmap marker style:
 
