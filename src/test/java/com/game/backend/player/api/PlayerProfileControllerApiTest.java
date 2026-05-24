@@ -1,6 +1,7 @@
 package com.game.backend.player.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.game.backend.auth.service.AuthService;
 import com.game.backend.player.service.PlayerNotFoundException;
 import com.game.backend.player.service.PlayerProfileService;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class PlayerProfileControllerApiTest {
 
     @MockBean
     private PlayerProfileService service;
+
+    @MockBean
+    private AuthService authService;
 
     @Test
     void create_returns200() throws Exception {

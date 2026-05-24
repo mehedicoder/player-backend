@@ -166,7 +166,66 @@ What should the reviewer check?:
 - Add API tests for authentication flows
 
 ### Entries
-_No entries yet._
+### Implement Authentication and Session Handling Vertical Slice
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-23 14:58 +02:00
+Which files changed?:
+- `src/main/java/com/game/backend/auth/api/AuthController.java`
+- `src/main/java/com/game/backend/auth/api/LoginRequest.java`
+- `src/main/java/com/game/backend/auth/api/LoginResponse.java`
+- `src/main/java/com/game/backend/auth/api/LogoutResponse.java`
+- `src/main/java/com/game/backend/auth/security/AuthFilter.java`
+- `src/main/java/com/game/backend/auth/service/AuthService.java`
+- `src/main/java/com/game/backend/auth/service/AuthSessionStore.java`
+- `src/main/java/com/game/backend/auth/service/AuthRateLimiter.java`
+- `src/main/java/com/game/backend/auth/service/AuthHeaderParser.java`
+- `src/main/java/com/game/backend/auth/service/SessionData.java`
+- `src/main/java/com/game/backend/auth/service/TokenGenerator.java`
+- `src/main/java/com/game/backend/auth/service/UuidTokenGenerator.java`
+- `src/main/java/com/game/backend/auth/service/AuthInfrastructureException.java`
+- `src/main/java/com/game/backend/auth/service/AuthRateLimitedException.java`
+- `src/main/java/com/game/backend/auth/service/AuthTokenExpiredException.java`
+- `src/main/java/com/game/backend/auth/service/AuthTokenInvalidException.java`
+- `src/main/java/com/game/backend/auth/service/AuthTokenMissingException.java`
+- `src/main/java/com/game/backend/auth/service/InvalidCredentialsException.java`
+- `src/main/java/com/game/backend/config/SecurityConfig.java`
+- `src/main/java/com/game/backend/common/api/GlobalExceptionHandler.java`
+- `src/main/resources/application-local.yml`
+- `src/test/java/com/game/backend/auth/api/AuthApiSecurityTest.java`
+- `src/test/java/com/game/backend/auth/service/AuthServiceTest.java`
+- `src/test/java/com/game/backend/player/api/PlayerProfileControllerApiTest.java`
+- `tasks.md`
+
+What decisions were made?:
+- Implemented opaque bearer token sessions with Redis as session source of truth.
+- Protected `GET`/`PUT` player profile APIs via auth filter; kept non-protected endpoints public.
+- Used temporary login credential model `playerId + email` for Phase 3 scope.
+- Enforced Redis-backed failed-login rate limiting with configurable threshold/window.
+
+What was skipped?:
+- No production IAM/OAuth integration (explicitly out of scope for Phase 3).
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests=false test` passed.
+- Added and executed tests for:
+  - login invalid credential (`401 INVALID_CREDENTIALS`)
+  - login rate limit exceeded (`429 AUTH_RATE_LIMITED`)
+  - protected API missing/invalid token (`401` auth codes)
+  - protected API valid token success path
+  - auth service session lifecycle and expiry behavior
+
+What problems happened?:
+- Initial auth API test used full Spring Boot context and failed due datasource requirements.
+- Resolved by converting to MVC slice test and mocking required auth dependencies.
+- Existing player controller API test needed new `AuthService` mock due auth filter dependency.
+
+What should the reviewer check?:
+- Auth filter route protection boundaries and failure mode behavior.
+- Error code/status mapping alignment with Phase 3 requirements contract.
+- Redis session and rate-limit key/TTL behavior.
+- Security regression risk on existing player profile endpoints.
 
 ---
 

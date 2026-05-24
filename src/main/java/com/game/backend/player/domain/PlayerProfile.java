@@ -11,6 +11,9 @@ import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
+/**
+ * JPA entity representing durable player profile state.
+ */
 @Entity
 @Table(name = "player_profile")
 public class PlayerProfile {

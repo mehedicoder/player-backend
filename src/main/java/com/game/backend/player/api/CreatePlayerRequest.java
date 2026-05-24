@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Request payload for creating or seeding a player profile.
+ */
 public record CreatePlayerRequest(
     @Size(max = 64)
     String playerId,
