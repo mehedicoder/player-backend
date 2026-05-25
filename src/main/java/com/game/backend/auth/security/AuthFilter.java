@@ -62,6 +62,6 @@ public class AuthFilter extends OncePerRequestFilter {
             return false;
         }
         String method = request.getMethod();
-        return "GET".equals(method) || "PUT".equals(method);
+        return "GET".equals(method) || "PUT".equals(method) || "POST".equals(method);
     }
 }
