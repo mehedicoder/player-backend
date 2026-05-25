@@ -6,6 +6,8 @@ import com.game.backend.auth.service.AuthTokenExpiredException;
 import com.game.backend.auth.service.AuthTokenInvalidException;
 import com.game.backend.auth.service.AuthTokenMissingException;
 import com.game.backend.auth.service.InvalidCredentialsException;
+import com.game.backend.game.service.InfrastructureUnavailableException;
+import com.game.backend.game.service.InsufficientBalanceException;
 import com.game.backend.player.service.PlayerNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -130,6 +132,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAuthInfra(AuthInfrastructureException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(ApiErrorResponse.of("AUTH_INFRA_ERROR", ex.getMessage(), List.of()));
+    }
+
+    /**
+     * Handles business conflicts on wallet debit.
+     */
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ApiErrorResponse> handleInsufficientBalance(InsufficientBalanceException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ApiErrorResponse.of("INSUFFICIENT_BALANCE", ex.getMessage(), List.of()));
+    }
+
+    /**
+     * Handles infrastructure failures from dependent systems.
+     */
+    @ExceptionHandler(InfrastructureUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleInfraUnavailable(InfrastructureUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(ApiErrorResponse.of("INFRA_UNAVAILABLE", ex.getMessage(), List.of()));
     }
 
     /**
