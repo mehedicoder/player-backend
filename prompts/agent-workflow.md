@@ -138,16 +138,20 @@ The Validation Agent validates behavior. It does not approve architecture change
 
 ## Standard Workflow
 
-1. Human Architect defines or approves a roadmap task.
-2. Reviewer Agent performs feature-spec review and writes `spec-review-report.md`.
-3. Validation Agent performs feature-spec validation and writes `spec-validation-report.md`.
-4. Builder Agent implements one vertical slice.
-5. Builder Agent updates `tasks.md`.
-6. Reviewer Agent reviews the latest git diff and writes `review-report.md`.
-7. Builder Agent fixes required review findings.
-8. Validation Agent validates tests, edge cases, and acceptance criteria in `validation-report.md`.
-9. Human Architect performs final review.
-10. Human Architect commits, pushes, merges, or deploys.
+1. Human selects or approves a roadmap task.
+2. Builder Agent create feature specification using the skill feature-spec from /skills/feature-spec folder
+3. Reviewer Agent review the feature-spec and generate spec-review-report on the feature folder.
+4. Builder Agent check the spec-review-report.md and fix any issue reported.
+5. Reviewer Agent review the feature spec again and update spec-review-report on the feature folder.
+6. Validator Agent validate the feature spec and generate spec-validation-report.md.
+7. Builder Agent review the spec-validation-report.md and address any issue reported.
+8. Builder Agent implements the task.
+9. Builder Agent updates `tasks.md`.
+10. Reviewer Agent reviews the latest git diff.
+11. Builder Agent fixes required review findings.
+12. Validation Agent validates tests and acceptance criteria.
+13. Human performs final review.
+14. Human decides whether to commit, push, merge, or deploy.
 
 ---
 
