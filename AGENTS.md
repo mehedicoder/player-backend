@@ -165,13 +165,19 @@ Use this file for the overall workflow rules:
 Use this workflow unless the human asks otherwise:
 
 1. Human selects or approves a roadmap task.
-2. Builder Agent implements the task.
-3. Builder Agent updates `tasks.md`.
-4. Reviewer Agent reviews the latest git diff.
-5. Builder Agent fixes required review findings.
-6. Validation Agent validates tests and acceptance criteria.
-7. Human performs final review.
-8. Human decides whether to commit, push, merge, or deploy.
+2. Builder Agent create feature specification using the skill feature-spec from /skills/feature-spec folder
+3. Reviewer Agent review the feature-spec and generate spec-review-report on the feature folder.
+4. Builder Agent check the spec-review-report.md and fix any issue reported.
+5. Reviewer Agent review the feature spec again and update spec-review-report on the feature folder.
+6. Validator Agent validate the feature spec and generate spec-validation-report.md.
+7. Builder Agent review the spec-validation-report.md and address any issue reported.
+6. Builder Agent implements the task.
+7. Builder Agent updates `tasks.md`.
+8. Reviewer Agent reviews the latest git diff.
+9. Builder Agent fixes required review findings.
+10. Validation Agent validates tests and acceptance criteria.
+11. Human performs final review.
+12. Human decides whether to commit, push, merge, or deploy.
 
 ---
 
