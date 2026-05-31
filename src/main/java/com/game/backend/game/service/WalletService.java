@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+import java.util.Locale;
+
 /**
  * Handles transactional wallet reads and mutations.
  */
@@ -92,7 +95,26 @@ public class WalletService {
         record.setBalanceAfter(nextBalance);
         idempotencyRepository.save(record);
 
-        activityPublisher.publishAfterCommit("player.wallet.activity.v1", playerId, "WALLET_" + request.mutationType(), request.reason());
+        String eventType = request.mutationType() == WalletMutationType.CREDIT
+            ? PlayerActivityEventType.WALLET_CREDITED_V1
+            : PlayerActivityEventType.WALLET_DEBITED_V1;
+        String reasonCode = normalizeReasonCode(request.reason());
+        PlayerActivityEventEnvelope event = PlayerActivityEventEnvelope.v1(
+            "wallet-ledger-" + persistedLedger.getId(),
+            eventType,
+            playerId,
+            null,
+            request.idempotencyKey(),
+            Map.of(
+                "walletId", playerId,
+                "transactionId", String.valueOf(persistedLedger.getId()),
+                "amount", request.amount(),
+                "currency", "COIN",
+                "balanceAfter", nextBalance,
+                "reason", reasonCode
+            )
+        );
+        activityPublisher.publishAfterCommit(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1, playerId, event);
         return new WalletResponse(playerId, nextBalance, wallet.getUpdatedAt());
     }
 
@@ -100,5 +122,17 @@ public class WalletService {
         if (!playerRepository.existsById(playerId)) {
             throw new PlayerNotFoundException(playerId);
         }
+    }
+
+    private String normalizeReasonCode(String reason) {
+        String normalized = reason
+            .trim()
+            .toUpperCase(Locale.ROOT)
+            .replaceAll("[^A-Z0-9]+", "_")
+            .replaceAll("^_+|_+$", "");
+        if (normalized.isBlank()) {
+            return "UNKNOWN";
+        }
+        return normalized.length() > 64 ? normalized.substring(0, 64) : normalized;
     }
 }

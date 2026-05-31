@@ -19,16 +19,17 @@ public class TransactionalActivityPublisher {
     /**
      * Publishes activity event after successful commit when a transaction exists.
      */
-    public void publishAfterCommit(String topic, String playerId, String action, String details) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            publisher.publish(topic, playerId, action, details);
-            return;
+    public void publishAfterCommit(String topic, String key, PlayerActivityEventEnvelope event) {
+        boolean txActive = TransactionSynchronizationManager.isActualTransactionActive();
+        boolean syncActive = TransactionSynchronizationManager.isSynchronizationActive();
+        if (!txActive || !syncActive) {
+            throw new IllegalStateException("publishAfterCommit requires an active transaction and synchronization");
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                publisher.publish(topic, playerId, action, details);
+                publisher.publish(topic, key, event);
             }
         });
     }

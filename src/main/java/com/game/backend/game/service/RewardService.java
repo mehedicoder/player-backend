@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Map;
+
 /**
  * Handles idempotent reward claim operations.
  */
@@ -71,9 +75,28 @@ public class RewardService {
         claim.setRewardAmount(rewardAmount);
         claim.setLedgerId(persistedLedger.getId());
         claim.setBalanceAfter(nextBalance);
-        rewardClaimRepository.save(claim);
+        RewardClaim persistedClaim = rewardClaimRepository.save(claim);
 
-        activityPublisher.publishAfterCommit("player.reward.activity.v1", playerId, "REWARD_CLAIM", rewardId);
+        String claimId = "reward-claim-" + persistedLedger.getId();
+        PlayerActivityEventEnvelope event = PlayerActivityEventEnvelope.v1(
+            claimId,
+            PlayerActivityEventType.REWARD_CLAIMED_V1,
+            playerId,
+            null,
+            idempotencyKey,
+            Map.of(
+                "rewardId", rewardId,
+                "claimId", claimId,
+                "claimedAt", OffsetDateTime.now(ZoneOffset.UTC).toString(),
+                "rewardType", "CURRENCY",
+                "grantSummary", Map.of(
+                    "amount", persistedClaim.getRewardAmount(),
+                    "currency", "COIN",
+                    "ledgerId", String.valueOf(persistedLedger.getId())
+                )
+            )
+        );
+        activityPublisher.publishAfterCommit(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1, playerId, event);
         return new RewardClaimResponse(playerId, rewardId, rewardAmount, nextBalance);
     }
 

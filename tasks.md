@@ -391,7 +391,224 @@ What should the reviewer check?:
 - Add Kafka integration tests
 
 ### Entries
-_No entries yet._
+### Implement Player Activity Event Producer Foundation
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-30 16:03 +02:00
+Which files changed?:
+- `src/main/java/com/game/backend/game/service/PlayerActivityEventEnvelope.java`
+- `src/main/java/com/game/backend/game/service/PlayerActivityEventType.java`
+- `src/main/java/com/game/backend/game/service/PlayerActivityTopics.java`
+- `src/main/java/com/game/backend/game/service/PlayerActivityPublisher.java`
+- `src/main/java/com/game/backend/game/service/KafkaPlayerActivityPublisher.java`
+- `src/main/java/com/game/backend/game/service/TransactionalActivityPublisher.java`
+- `src/main/java/com/game/backend/game/service/WalletService.java`
+- `src/main/java/com/game/backend/game/service/InventoryService.java`
+- `src/main/java/com/game/backend/game/service/RewardService.java`
+- `src/test/java/com/game/backend/game/GameStateIntegrationTest.java`
+- `src/test/java/com/game/backend/game/service/WalletServiceTest.java`
+- `src/test/java/com/game/backend/game/service/PlayerActivityEventEnvelopeTest.java`
+- `src/test/java/com/game/backend/game/service/TransactionalActivityPublisherTest.java`
+- `src/test/java/com/game/backend/game/service/KafkaPlayerActivityPublisherTest.java`
+- `specs/2026-05-30-player-activity-event-producer-foundation/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Standardized producer contract to single topic `player-activity-events.v1` with key=`playerId`.
+- Introduced versioned envelope (`schemaVersion=v1`) and explicit event types:
+  - `wallet.credited.v1`
+  - `wallet.debited.v1`
+  - `inventory.mutated.v1`
+  - `reward.claimed.v1`
+- Kept publish timing as after-commit via `TransactionalActivityPublisher`.
+- Tightened transaction gating to require both synchronization and actual transaction activity before registering callbacks.
+- Kept async Kafka send and failure logging without rolling back committed business transactions.
+- Defined DLQ constant `player-activity-events.v1.dlq` as contract-only in this slice.
+
+What was skipped?:
+- No consumers, retry workers, or DLQ consumer implementation.
+- No Schema Registry integration.
+- No outbox/replay/backfill implementation.
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false test` passed.
+- Added tests for:
+  - envelope contract fields (`PlayerActivityEventEnvelopeTest`)
+  - transactional after-commit behavior (`TransactionalActivityPublisherTest`)
+  - Kafka topic/key/envelope dispatch (`KafkaPlayerActivityPublisherTest`)
+  - wallet debit event-type mapping (`WalletServiceTest`)
+  - updated integration assertions for topic + envelope event types/payloads (`GameStateIntegrationTest`)
+
+What problems happened?:
+- Test logs include expected local-environment warnings from Testcontainers Docker detection in this environment, but test suite still passed.
+
+What should the reviewer check?:
+- Event payload fields in wallet/inventory/reward services align with feature spec contract.
+- `eventId` strategy is deterministic where backed by persisted identifiers (wallet/reward) and acceptable for inventory mutation flow.
+- After-commit registration is not bypassed on transactional write paths.
+
+### Apply Reviewer-Driven Hardening for Producer Foundation
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 11:24 +02:00
+Which files changed?:
+- `src/main/resources/application-local.yml`
+- `src/main/java/com/game/backend/game/domain/InventoryItem.java`
+- `src/main/java/com/game/backend/game/service/PlayerActivityEventEnvelope.java`
+- `src/main/java/com/game/backend/game/service/KafkaPlayerActivityPublisher.java`
+- `src/main/java/com/game/backend/game/service/TransactionalActivityPublisher.java`
+- `src/main/java/com/game/backend/game/service/InventoryService.java`
+- `src/main/java/com/game/backend/game/service/WalletService.java`
+- `src/test/java/com/game/backend/game/GameStateIntegrationTest.java`
+- `src/test/java/com/game/backend/game/service/PlayerActivityEventEnvelopeTest.java`
+- `src/test/java/com/game/backend/game/service/KafkaPlayerActivityPublisherTest.java`
+- `src/test/java/com/game/backend/game/service/TransactionalActivityPublisherTest.java`
+- `src/test/java/com/game/backend/game/service/KafkaPlayerActivityPublisherWiringTest.java`
+- `src/test/java/com/game/backend/game/service/WalletServiceTest.java`
+- `specs/2026-05-30-player-activity-event-producer-foundation/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Explicitly pinned Kafka producer serializers for envelope JSON publishing.
+- Added required-field validation and immutable payload copy in envelope builder.
+- Added producer-side DLQ reroute attempt on primary send failure.
+- Enforced active-transaction requirement in `publishAfterCommit`.
+- Switched inventory event identity to deterministic ID derived from persisted inventory row + resulting quantity.
+- Normalized wallet `reason` into controlled reason-code format before publishing.
+- Added focused Spring context wiring test for real `KafkaPlayerActivityPublisher` bean with injected `KafkaTemplate`.
+
+What was skipped?:
+- No full retry/outbox pipeline was introduced.
+- No new consumer/DLQ-consumer implementation was introduced.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false test` passed.
+- Added/updated tests for:
+  - envelope validation guardrails
+  - tx-required publish-after-commit behavior
+  - Kafka failure path with DLQ reroute attempt
+  - Spring wiring coverage for publisher bean
+  - normalized wallet reason assertions
+  - deterministic inventory mutation ID pattern assertion
+
+What problems happened?:
+- Test output contains expected local warnings about missing Docker/Testcontainers runtime in this environment.
+- Kafka failure-path unit test intentionally emits error logs during simulated failed send.
+
+What should the reviewer check?:
+- DLQ reroute behavior is non-blocking and does not recurse infinitely on repeated failures.
+- Transaction guardrail does not break any valid non-transactional call path.
+- Wallet reason normalization is acceptable for business/audit semantics.
+
+### Fix Remaining Inventory EventId Collision Risk (Reviewer Follow-up)
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 12:16 +02:00
+Which files changed?:
+- `src/main/java/com/game/backend/game/domain/InventoryItem.java`
+- `src/main/java/com/game/backend/game/service/InventoryService.java`
+- `src/test/java/com/game/backend/game/GameStateIntegrationTest.java`
+- `specs/2026-05-30-player-activity-event-producer-foundation/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Replaced inventory `mutationId` construction with persisted-identity + persisted-update-timestamp precision fields:
+  - item row id
+  - updated-at epoch second
+  - updated-at nano
+  - resulting quantity
+  - delta
+- Exposed `InventoryItem#getUpdatedAt()` to build event ID from persisted state.
+
+What was skipped?:
+- No inventory idempotency table or inventory mutation ledger table introduced in this follow-up.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=GameStateIntegrationTest,WalletServiceTest,PlayerActivityEventEnvelopeTest,KafkaPlayerActivityPublisherTest,TransactionalActivityPublisherTest,KafkaPlayerActivityPublisherWiringTest" test` passed.
+- Integration assertion updated to verify new mutationId structure includes timestamp precision markers.
+
+What problems happened?:
+- Expected local Testcontainers Docker-environment warnings in this environment.
+- Expected error log emission in Kafka failure-path unit test.
+
+What should the reviewer check?:
+- New mutationId composition adequately prevents false dedupe for distinct inventory mutations that converge to same final quantity.
+
+### Resolve Inventory EventId Collision Potential with Persisted Mutation Identity
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 12:22 +02:00
+Which files changed?:
+- `src/main/resources/db/migration/V3__inventory_mutation_event.sql`
+- `src/main/java/com/game/backend/game/domain/InventoryMutationEvent.java`
+- `src/main/java/com/game/backend/game/repository/InventoryMutationEventRepository.java`
+- `src/main/java/com/game/backend/game/service/InventoryService.java`
+- `src/main/java/com/game/backend/game/domain/InventoryItem.java`
+- `src/test/java/com/game/backend/game/GameStateIntegrationTest.java`
+- `specs/2026-05-30-player-activity-event-producer-foundation/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Added persisted mutation-event table with auto-increment primary key.
+- Inventory publish path now persists a mutation-event row in the same transaction and uses `inventory-mutation-event-<id>` as `eventId`/`mutationId`.
+- Removed timestamp-derived mutation identity for inventory events.
+
+What was skipped?:
+- No separate inventory idempotency API contract was introduced in this change.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=GameStateIntegrationTest,WalletServiceTest,PlayerActivityEventEnvelopeTest,KafkaPlayerActivityPublisherTest,TransactionalActivityPublisherTest,KafkaPlayerActivityPublisherWiringTest" test` passed.
+- Added integration assertion that two distinct inventory mutations produce distinct `mutationId` values.
+
+What problems happened?:
+- Expected local Testcontainers Docker warnings and Kafka failure-path test log output in this environment.
+
+What should the reviewer check?:
+- Persisted mutation-event ID is created and used in the same transaction as inventory state mutation.
+- Event ID uniqueness is now derived from durable database identity, not derived payload/timestamp.
+
+### Fix Kafka Container Runtime Stability and Close Validation Follow-up
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 13:16 +02:00
+Which files changed?:
+- `docker-compose.yml`
+- `specs/2026-05-30-player-activity-event-producer-foundation/validation-report.md`
+- `specs/2026-05-30-player-activity-event-producer-foundation/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Kept single-node local Kafka setup on `apache/kafka:3.9.0` but corrected runtime environment variable keys for this image (`KAFKA_*` instead of `KAFKA_CFG_*`).
+- Added explicit Kafka healthcheck in compose using `kafka-topics.sh`.
+- Kept existing local bootstrap server contract (`localhost:9092`) to avoid application config drift.
+
+What was skipped?:
+- No architecture/service-boundary changes.
+- No consumer or retry flow additions.
+
+How was it tested?:
+- `docker compose down` then `docker compose up -d` passed.
+- `docker compose ps` showed all services healthy including Kafka.
+- App started with `mvn "-Dspring-boot.run.profiles=local" spring-boot:run`.
+- `Invoke-WebRequest http://localhost:8080/actuator/health` returned `HTTP 200` and `status=UP`.
+- Live publish smoke executed and verified by consuming one message from `player-activity-events.v1`:
+  - `POST /api/v1/players`
+  - `POST /api/v1/auth/login`
+  - `POST /api/v1/players/{playerId}/wallet/mutations`
+  - `docker exec player-kafka /opt/kafka/bin/kafka-console-consumer.sh ... --max-messages 1`
+- Consumed event payload confirmed `wallet.credited.v1` for the validation player.
+
+What problems happened?:
+- Attempt to switch to `bitnami/kafka:3.9.0` failed because that tag was unavailable in this environment; reverted to `apache/kafka:3.9.0` with corrected config.
+
+What should the reviewer check?:
+- Local compose Kafka remains stable across repeated up/down cycles.
+- Kafka healthcheck command path remains valid for chosen image tag.
 
 ---
 

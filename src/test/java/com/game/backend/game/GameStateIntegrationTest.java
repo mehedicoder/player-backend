@@ -10,7 +10,9 @@ import com.game.backend.game.repository.RewardClaimRepository;
 import com.game.backend.game.repository.WalletIdempotencyRepository;
 import com.game.backend.game.repository.WalletLedgerRepository;
 import com.game.backend.game.service.InventoryService;
+import com.game.backend.game.service.PlayerActivityEventType;
 import com.game.backend.game.service.PlayerActivityPublisher;
+import com.game.backend.game.service.PlayerActivityTopics;
 import com.game.backend.game.service.RewardService;
 import com.game.backend.game.service.WalletService;
 import com.game.backend.player.api.CreatePlayerRequest;
@@ -34,8 +36,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentCaptor.forClass;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
@@ -95,7 +100,12 @@ class GameStateIntegrationTest {
         assertThat(walletLedgerRepository.countByPlayerId(playerId)).isEqualTo(1L);
         assertThat(walletIdempotencyRepository.countByPlayerId(playerId)).isEqualTo(1L);
         verify(playerActivityPublisher, times(1))
-            .publish(eq("player.wallet.activity.v1"), eq(playerId), eq("WALLET_CREDIT"), eq("quest"));
+            .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                event.eventType().equals(PlayerActivityEventType.WALLET_CREDITED_V1)
+                    && event.playerId().equals(playerId)
+                    && event.idempotencyKey().equals("idem-1")
+                    && "QUEST".equals(event.payload().get("reason"))
+            ));
     }
 
     @Test
@@ -109,7 +119,11 @@ class GameStateIntegrationTest {
         assertThat(rewardClaimRepository.countByPlayerId(playerId)).isEqualTo(1L);
         assertThat(walletLedgerRepository.countByPlayerId(playerId)).isEqualTo(1L);
         verify(playerActivityPublisher, times(1))
-            .publish(eq("player.reward.activity.v1"), eq(playerId), eq("REWARD_CLAIM"), eq("reward-1"));
+            .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                event.eventType().equals(PlayerActivityEventType.REWARD_CLAIMED_V1)
+                    && event.playerId().equals(playerId)
+                    && "reward-1".equals(event.payload().get("rewardId"))
+            ));
     }
 
     @Test
@@ -134,7 +148,10 @@ class GameStateIntegrationTest {
             assertThat(current.balance()).isEqualTo(200L);
             assertThat(walletLedgerRepository.countByPlayerId(playerId)).isEqualTo(20L);
             verify(playerActivityPublisher, times(20))
-                .publish(eq("player.wallet.activity.v1"), eq(playerId), eq("WALLET_CREDIT"), eq("batch-credit"));
+                .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                    event.eventType().equals(PlayerActivityEventType.WALLET_CREDITED_V1)
+                        && "BATCH_CREDIT".equals(event.payload().get("reason"))
+                ));
         } finally {
             executor.shutdownNow();
         }
@@ -146,7 +163,32 @@ class GameStateIntegrationTest {
         inventoryService.mutateInventory(playerId, new InventoryMutationRequest("WOOD", InventoryOperation.ADD, 5));
 
         verify(playerActivityPublisher, atLeastOnce())
-            .publish(eq("player.inventory.activity.v1"), eq(playerId), eq("INVENTORY_ADD"), eq("WOOD"));
+            .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                event.eventType().equals(PlayerActivityEventType.INVENTORY_MUTATED_V1)
+                    && "WOOD".equals(event.payload().get("itemId"))
+                    && String.valueOf(event.payload().get("mutationId")).startsWith("inventory-mutation-event-")
+            ));
+    }
+
+    @Test
+    void inventoryMutation_distinctOperations_produceDistinctMutationIds() {
+        String playerId = createPlayer();
+        inventoryService.mutateInventory(playerId, new InventoryMutationRequest("WOOD", InventoryOperation.ADD, 5));
+        inventoryService.mutateInventory(playerId, new InventoryMutationRequest("WOOD", InventoryOperation.REMOVE, 5));
+
+        var eventCaptor = forClass(com.game.backend.game.service.PlayerActivityEventEnvelope.class);
+        verify(playerActivityPublisher, times(2))
+            .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), eventCaptor.capture());
+
+        var mutationIds = eventCaptor.getAllValues()
+            .stream()
+            .map(event -> String.valueOf(event.payload().get("mutationId")))
+            .collect(Collectors.toList());
+
+        assertThat(mutationIds).hasSize(2);
+        assertThat(mutationIds.get(0)).startsWith("inventory-mutation-event-");
+        assertThat(mutationIds.get(1)).startsWith("inventory-mutation-event-");
+        assertThat(mutationIds.get(0)).isNotEqualTo(mutationIds.get(1));
     }
 
     @Test
@@ -172,7 +214,10 @@ class GameStateIntegrationTest {
             assertThat(walletLedgerRepository.countByPlayerId(playerId)).isEqualTo(1L);
             assertThat(walletIdempotencyRepository.countByPlayerId(playerId)).isEqualTo(1L);
             verify(playerActivityPublisher, times(1))
-                .publish(eq("player.wallet.activity.v1"), eq(playerId), eq("WALLET_CREDIT"), eq("parallel-idem"));
+                .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                    event.eventType().equals(PlayerActivityEventType.WALLET_CREDITED_V1)
+                        && "PARALLEL_IDEM".equals(event.payload().get("reason"))
+                ));
         } finally {
             executor.shutdownNow();
         }
@@ -197,7 +242,10 @@ class GameStateIntegrationTest {
             assertThat(rewardClaimRepository.countByPlayerId(playerId)).isEqualTo(1L);
             assertThat(walletLedgerRepository.countByPlayerId(playerId)).isEqualTo(1L);
             verify(playerActivityPublisher, times(1))
-                .publish(eq("player.reward.activity.v1"), eq(playerId), eq("REWARD_CLAIM"), eq("reward-par"));
+                .publish(eq(PlayerActivityTopics.PLAYER_ACTIVITY_EVENTS_V1), eq(playerId), argThat(event ->
+                    event.eventType().equals(PlayerActivityEventType.REWARD_CLAIMED_V1)
+                        && "reward-par".equals(event.payload().get("rewardId"))
+                ));
         } finally {
             executor.shutdownNow();
         }

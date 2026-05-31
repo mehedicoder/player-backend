@@ -73,7 +73,7 @@ validation.md
 
 # Spec Validation Report
 
-Feature: `specs/YYYY-MM-DD-<feature-name>`
+Feature: `specs/YYYY-MM-DD-<feature-name>/spec-validation-report.md`
 Date: <YYYY-MM-DD>
 Role: Spec Validation Subagent
 
