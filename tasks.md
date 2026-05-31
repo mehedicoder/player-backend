@@ -610,6 +610,150 @@ What should the reviewer check?:
 - Local compose Kafka remains stable across repeated up/down cycles.
 - Kafka healthcheck command path remains valid for chosen image tag.
 
+### Implement Leaderboard Update Consumer v1 (Phase 5)
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 15:59 +02:00
+Which files changed?:
+- `src/main/resources/db/migration/V4__leaderboard_consumer_foundation.sql`
+- `src/main/java/com/game/backend/config/LeaderboardKafkaConsumerConfig.java`
+- `src/main/java/com/game/backend/game/domain/LeaderboardScore.java`
+- `src/main/java/com/game/backend/game/domain/LeaderboardProcessedEvent.java`
+- `src/main/java/com/game/backend/game/repository/LeaderboardScoreRepository.java`
+- `src/main/java/com/game/backend/game/repository/LeaderboardProcessedEventRepository.java`
+- `src/main/java/com/game/backend/game/service/LeaderboardConsumerProperties.java`
+- `src/main/java/com/game/backend/game/service/LeaderboardScoreUpdateService.java`
+- `src/main/java/com/game/backend/game/service/LeaderboardProcessingOutcome.java`
+- `src/main/java/com/game/backend/game/service/InvalidLeaderboardEventException.java`
+- `src/main/java/com/game/backend/game/service/DuplicateLeaderboardEventException.java`
+- `src/main/java/com/game/backend/game/service/PlayerActivityLeaderboardConsumer.java`
+- `src/main/resources/application-local.yml`
+- `src/test/java/com/game/backend/game/service/LeaderboardScoreUpdateServiceTest.java`
+- `src/test/java/com/game/backend/game/service/PlayerActivityLeaderboardConsumerTest.java`
+- `src/test/java/com/game/backend/game/LeaderboardConsumerIntegrationTest.java`
+- `specs/2026-05-31-leaderboard-update-consumer/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Implemented dedicated leaderboard consumer group and listener container with manual acknowledgment and explicit retry policy.
+- Enforced v1 event whitelist (`wallet.credited.v1`, `wallet.debited.v1`, `reward.claimed.v1`) with non-retriable skip+commit handling for invalid/unsupported events.
+- Implemented durable idempotency with unique `(consumer_group, event_id)` constraint and transactional dedupe+score update.
+- Implemented score clamp to non-negative (`>=0`) and strict positive numeric payload validation with max delta bound.
+- Added baseline counters for processed/duplicate/invalid-or-unsupported/retry-exhausted paths.
+
+What was skipped?:
+- No WebSocket, seasonal/regional ranking, backfill, or DLQ replay tooling (out of scope by spec).
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=LeaderboardScoreUpdateServiceTest,PlayerActivityLeaderboardConsumerTest,LeaderboardConsumerIntegrationTest" test` passed.
+- Added tests for:
+  - score update and clamp behavior
+  - duplicate event dedupe path
+  - invalid/unsupported event handling and non-blocking progression
+  - consumer retry-vs-nonretry ack behavior at unit level
+
+What problems happened?:
+- Initial compile failed due incorrect backoff class import; fixed to Spring Kafka `ExponentialBackOffWithMaxRetries`.
+- Initial integration test produced serialization errors by sending envelope objects to a string-serializer producer; fixed by sending serialized JSON strings.
+
+What should the reviewer check?:
+- Kafka error-handler semantics match spec intent: invalid/unsupported messages commit, retriable failures are retried and not silently dropped.
+- DB dedupe and score mutation remain atomic under concurrent duplicate delivery.
+- Logging remains structured and safe (no payload dumps, sanitized fields).
+
+### Fix Reviewer Finding: Null Leaderboard Payload Classification
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 18:06 +02:00
+Which files changed?:
+- `src/main/java/com/game/backend/game/service/LeaderboardScoreUpdateService.java`
+- `src/test/java/com/game/backend/game/service/LeaderboardScoreUpdateServiceTest.java`
+- `src/test/java/com/game/backend/game/service/PlayerActivityLeaderboardConsumerTest.java`
+- `specs/2026-05-31-leaderboard-update-consumer/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Enforced explicit non-null envelope payload validation in leaderboard score processing.
+- Classified null payload as `InvalidLeaderboardEventException` to ensure invalid-input flow stays non-retriable.
+- Added coverage at service and consumer levels for null payload handling.
+
+What was skipped?:
+- No schema/config/architecture changes.
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests=false "-Dtest=LeaderboardScoreUpdateServiceTest,PlayerActivityLeaderboardConsumerTest" test` passed.
+
+What problems happened?:
+- No functional failures; only expected local WARN logs from invalid-event test cases and known Mockito dynamic-agent warnings.
+
+What should the reviewer check?:
+- Null payload now maps to invalid-event path (non-retriable) instead of runtime exception retry path.
+- Added tests sufficiently cover null payload classification behavior.
+
+### Fix Validation Blocker: Leaderboard Integration Test Flakiness in Full Suite
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 19:10 +02:00
+Which files changed?:
+- `src/test/java/com/game/backend/game/LeaderboardConsumerIntegrationTest.java`
+- `specs/2026-05-31-leaderboard-update-consumer/prompts.md`
+- `specs/2026-05-31-leaderboard-update-consumer/validation-report.md`
+- `tasks.md`
+
+What decisions were made?:
+- Hardened leaderboard integration test publish/consume synchronization for full-suite stability:
+  - synchronous Kafka send with bounded wait (`send(...).get(...)`)
+  - increased score polling timeout window
+  - explicit listener-assignment wait in `@BeforeEach` using `KafkaListenerEndpointRegistry` + `ContainerTestUtils`
+  - isolated Spring test context for this class via `@DirtiesContext(BEFORE_CLASS)`
+
+What was skipped?:
+- No production code changes.
+- No schema/config/architecture changes.
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=LeaderboardScoreUpdateServiceTest,PlayerActivityLeaderboardConsumerTest,LeaderboardConsumerIntegrationTest" test` passed.
+- `mvn -q -DskipTests=false test` passed.
+
+What problems happened?:
+- Prior to final fix, full-suite run intermittently failed on `LeaderboardConsumerIntegrationTest.supportedEvent_updatesScore` timeout while isolated/targeted runs passed.
+- After listener-assignment synchronization and context isolation, full-suite run succeeded.
+
+What should the reviewer check?:
+- Full-suite stability of leaderboard integration tests remains consistent across repeated runs.
+- No hidden coupling introduced between embedded-Kafka test context and other `@SpringBootTest` classes.
+
+### Close Residual Validation Confidence Gap (Repeated Full-Suite Run)
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-05-31 19:17 +02:00
+Which files changed?:
+- `specs/2026-05-31-leaderboard-update-consumer/prompts.md`
+- `specs/2026-05-31-leaderboard-update-consumer/validation-report.md`
+- `tasks.md`
+
+What decisions were made?:
+- Treated residual gap as validation confidence (stability across repeat runs), not feature correctness.
+- Executed an additional full regression run and recorded evidence in validation report.
+
+What was skipped?:
+- No code/config/schema changes were needed for this residual gap.
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests=false test` passed (repeat run).
+
+What problems happened?:
+- No blocking failures in repeated run; only known non-blocking local-environment warnings.
+
+What should the reviewer check?:
+- Validation report now contains repeated full-suite pass evidence for residual stability confidence.
+
 ---
 
 ## Phase 6: Scale and Reliability

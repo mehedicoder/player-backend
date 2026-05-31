@@ -22,12 +22,25 @@ spring:
     consumer:
       auto-offset-reset: earliest
       enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+
+leaderboard:
+  consumer:
+    group-id: ${LEADERBOARD_CONSUMER_GROUP_ID:leaderboard-update-consumer-v1}
+    topic: ${LEADERBOARD_CONSUMER_TOPIC:player-activity-events.v1}
+    concurrency: ${LEADERBOARD_CONSUMER_CONCURRENCY:1}
+    retry-max-attempts: ${LEADERBOARD_CONSUMER_RETRY_MAX_ATTEMPTS:3}
+    retry-initial-interval-ms: ${LEADERBOARD_CONSUMER_RETRY_INITIAL_INTERVAL_MS:500}
+    retry-max-interval-ms: ${LEADERBOARD_CONSUMER_RETRY_MAX_INTERVAL_MS:1000}
+    max-payload-bytes: ${LEADERBOARD_CONSUMER_MAX_PAYLOAD_BYTES:65536}
+    max-score-delta: ${LEADERBOARD_CONSUMER_MAX_SCORE_DELTA:1000000}
 
 management:
   endpoints:
