@@ -49,11 +49,13 @@ public class InventoryItem {
         this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
+    public Long getId() { return id; }
     public String getPlayerId() { return playerId; }
     public void setPlayerId(String playerId) { this.playerId = playerId; }
     public String getItemCode() { return itemCode; }
     public void setItemCode(String itemCode) { this.itemCode = itemCode; }
     public Long getQuantity() { return quantity; }
     public void setQuantity(Long quantity) { this.quantity = quantity; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }
 

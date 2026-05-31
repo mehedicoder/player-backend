@@ -5,8 +5,8 @@ package com.game.backend.game.service;
  */
 public interface PlayerActivityPublisher {
     /**
-     * Publishes an event to a fixed topic.
+     * Publishes an event envelope to a fixed topic.
      */
-    void publish(String topic, String playerId, String action, String details);
+    void publish(String topic, String key, PlayerActivityEventEnvelope event);
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-30
+- docs: update agent workflow prompt and log request
+- docs: update agent workflow guidance and add diagram
+
+## 2026-05-26
+- Add spec reviewer and validation subagent prompts
+
 ## 2026-05-25
 - Create phase 4 game state services feature spec + implement phase 4 game state services and validation-driven fixes
 
