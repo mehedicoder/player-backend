@@ -40,7 +40,7 @@ Acceptance Criteria:
 
 ---
 
-## öl
+## Phase 2: Core Player Platform
 
 Goal: Build the first vertical slice of the player backend using MySQL as the source of truth and Redis for hot read caching.
 

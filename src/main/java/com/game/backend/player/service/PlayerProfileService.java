@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Service layer for player profile create/read/update operations.
+ */
 @Service
 public class PlayerProfileService {
 
@@ -26,6 +29,9 @@ public class PlayerProfileService {
         this.cache = cache;
     }
 
+    /**
+     * Creates a new player profile and warms the cache.
+     */
     @Transactional
     public PlayerProfileResponse createPlayer(CreatePlayerRequest request) {
         String playerId = request.playerId() == null || request.playerId().isBlank()
@@ -49,6 +55,9 @@ public class PlayerProfileService {
         return PlayerProfileResponse.from(saved);
     }
 
+    /**
+     * Returns player profile using cache-aside with DB fallback.
+     */
     @Transactional(readOnly = true)
     public PlayerProfileResponse getProfile(String playerId) {
         try {
@@ -67,6 +76,9 @@ public class PlayerProfileService {
         return PlayerProfileResponse.from(profile);
     }
 
+    /**
+     * Updates player profile fields and refreshes cache.
+     */
     @Transactional
     public PlayerProfileResponse updateProfile(String playerId, UpdatePlayerProfileRequest request) {
         PlayerProfile profile = repository.findById(playerId)

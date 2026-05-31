@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Request payload for player profile update operations.
+ */
 public record UpdatePlayerProfileRequest(
     @NotBlank
     @Size(max = 50)

@@ -39,6 +39,12 @@ Name: `specs/YYYY-MM-DD-<feature-name>/` using today's date.
 
 All feature-specific artifacts must stay inside this directory. Do not place feature-specific docs/files directly under `specs/` root.
 
+Expected report artifacts for this feature folder:
+- `spec-review-report.md` (Reviewer Agent - spec review)
+- `spec-validation-report.md` (Validation Agent - spec validation)
+- `review-report.md` (Reviewer Agent - implementation review)
+- `validation-report.md` (Validation Agent - implementation validation)
+
 #### `requirements.md`
 - Scope section: what is and is not included; field/data table if applicable
 - Decisions section: choices made and why (draw from user answers)
