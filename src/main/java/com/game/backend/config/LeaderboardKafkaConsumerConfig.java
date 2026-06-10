@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -47,7 +48,7 @@ public class LeaderboardKafkaConsumerConfig {
      */
     @Bean(name = "leaderboardKafkaListenerContainerFactory")
     ConcurrentKafkaListenerContainerFactory<String, String> leaderboardKafkaListenerContainerFactory(
-        ConsumerFactory<String, String> leaderboardConsumerFactory,
+        @Qualifier("leaderboardConsumerFactory") ConsumerFactory<String, String> leaderboardConsumerFactory,
         DefaultErrorHandler leaderboardConsumerErrorHandler,
         LeaderboardConsumerProperties properties
     ) {

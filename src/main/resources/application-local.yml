@@ -42,6 +42,26 @@ leaderboard:
     max-payload-bytes: ${LEADERBOARD_CONSUMER_MAX_PAYLOAD_BYTES:65536}
     max-score-delta: ${LEADERBOARD_CONSUMER_MAX_SCORE_DELTA:1000000}
 
+match-result:
+  consumer:
+    group-id: ${MATCH_RESULT_CONSUMER_GROUP_ID:match-result-consumer-v1}
+    topic: ${MATCH_RESULT_CONSUMER_TOPIC:match-results.v1}
+    dlq-topic: ${MATCH_RESULT_CONSUMER_DLQ_TOPIC:match-results.v1.dlq}
+    concurrency: ${MATCH_RESULT_CONSUMER_CONCURRENCY:1}
+    retry-max-attempts: ${MATCH_RESULT_CONSUMER_RETRY_MAX_ATTEMPTS:3}
+    retry-initial-interval-ms: ${MATCH_RESULT_CONSUMER_RETRY_INITIAL_INTERVAL_MS:500}
+    retry-max-interval-ms: ${MATCH_RESULT_CONSUMER_RETRY_MAX_INTERVAL_MS:1000}
+    max-payload-bytes: ${MATCH_RESULT_CONSUMER_MAX_PAYLOAD_BYTES:65536}
+    max-score-delta: ${MATCH_RESULT_CONSUMER_MAX_SCORE_DELTA:1000}
+
+notification:
+  worker:
+    enabled: ${NOTIFICATION_WORKER_ENABLED:true}
+    batch-size: ${NOTIFICATION_WORKER_BATCH_SIZE:10}
+    max-attempts: ${NOTIFICATION_WORKER_MAX_ATTEMPTS:4}
+    fixed-delay-ms: ${NOTIFICATION_WORKER_FIXED_DELAY_MS:1000}
+    processing-timeout-seconds: ${NOTIFICATION_WORKER_PROCESSING_TIMEOUT_SECONDS:300}
+
 management:
   endpoints:
     web:
