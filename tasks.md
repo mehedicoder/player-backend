@@ -756,6 +756,201 @@ What should the reviewer check?:
 
 ---
 
+### Implement Remaining Phase 5 Event Processing
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-06-08 17:46 Europe/Berlin
+Which files changed?:
+- `src/main/resources/db/migration/V5__phase5_remaining_event_processing.sql`
+- `src/main/java/com/game/backend/config/LeaderboardKafkaConsumerConfig.java`
+- `src/main/java/com/game/backend/config/MatchResultKafkaConsumerConfig.java`
+- `src/main/java/com/game/backend/game/domain/MatchResultProcessedEvent.java`
+- `src/main/java/com/game/backend/game/domain/MatchResultProjection.java`
+- `src/main/java/com/game/backend/game/domain/MatchResultType.java`
+- `src/main/java/com/game/backend/game/domain/NotificationJob.java`
+- `src/main/java/com/game/backend/game/domain/NotificationJobStatus.java`
+- `src/main/java/com/game/backend/game/repository/MatchResultProcessedEventRepository.java`
+- `src/main/java/com/game/backend/game/repository/MatchResultProjectionRepository.java`
+- `src/main/java/com/game/backend/game/repository/NotificationJobRepository.java`
+- `src/main/java/com/game/backend/game/service/InvalidMatchResultEventException.java`
+- `src/main/java/com/game/backend/game/service/LoggingNotificationDispatcher.java`
+- `src/main/java/com/game/backend/game/service/MatchResultConsumer.java`
+- `src/main/java/com/game/backend/game/service/MatchResultConsumerProperties.java`
+- `src/main/java/com/game/backend/game/service/MatchResultDlqPublisher.java`
+- `src/main/java/com/game/backend/game/service/MatchResultEventEnvelope.java`
+- `src/main/java/com/game/backend/game/service/MatchResultEventType.java`
+- `src/main/java/com/game/backend/game/service/MatchResultIngestionService.java`
+- `src/main/java/com/game/backend/game/service/MatchResultProcessingOutcome.java`
+- `src/main/java/com/game/backend/game/service/MatchResultTopics.java`
+- `src/main/java/com/game/backend/game/service/NotificationDispatcher.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorker.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorkerProperties.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorkerScheduler.java`
+- `src/main/resources/application-local.yml`
+- `src/test/java/com/game/backend/game/MatchResultConsumerIntegrationTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultConsumerTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultDlqPublisherTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultIngestionServiceTest.java`
+- `src/test/java/com/game/backend/game/service/NotificationWorkerTest.java`
+- `specs/2026-05-31-phase-5-remaining-event-processing/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Implemented `match-results.v1` consumer with v1 `match.result.recorded.v1` envelope/payload validation.
+- Added MySQL-backed match-result projection, processed-event dedupe, and durable notification job tables.
+- Kept match-result projection, dedupe marker, and notification job creation in one transaction boundary.
+- Implemented retry-exhausted DLQ routing to `match-results.v1.dlq` with required metadata and JSON payload.
+- Implemented durable async notification worker statuses and retry policy (`4` total attempts with `1s`, `2s`, `4s` backoff).
+- Split notification scheduling from transactional worker processing and made default scheduling disabled unless configured; local profile enables it.
+- Added explicit qualifier to existing leaderboard consumer factory to avoid Spring bean ambiguity after adding match-result consumer factory.
+
+What was skipped?:
+- No external notification provider integration; v1 dispatcher logs safe notification identifiers only.
+- No DLQ replay tooling or UI.
+- No roadmap checkbox updates in `specs/roadmap.md` in this step.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=MatchResult*Test,Notification*Test,*Dlq*Test" test` passed.
+- `mvn -q -DskipTests=false test` passed after the final scheduling/transaction split.
+- Added tests for:
+  - valid ingestion creates projection, dedupe marker, and notification job
+  - duplicate replay applies side effects once
+  - invalid/unsupported events skip and allow later valid events to progress
+  - retriable consumer failure retries and routes retry-exhausted record to DLQ
+  - notification worker success, retry wait, and `FAILED_PERMANENT` transitions
+  - DLQ payload required metadata
+
+What problems happened?:
+- Initial DLQ integration failed because DLQ publisher sent a `Map` through a producer configured with `StringSerializer`; fixed by serializing DLQ payload to JSON text.
+- Scheduled notification worker initially called a transactional method through self-invocation, causing no transaction for pessimistic lock query during scheduled execution; fixed by adding transaction boundary to scheduled entrypoint.
+- Full-suite rerun then exposed shutdown-time scheduled polling against stopped Testcontainers DB; fixed by splitting scheduler from worker and disabling scheduling by default outside configured profiles.
+- Test runs print known non-blocking Mockito dynamic-agent warnings and embedded Kafka/Testcontainers shutdown warnings.
+
+What should the reviewer check?:
+- Retry/DLQ semantics: invalid events are acked without retry; retry-exhausted transient failures produce the required DLQ metadata.
+- Dedupe and projection/notification job writes remain atomic under redelivery.
+- Notification worker locking and retry transitions are safe enough for bounded single-service worker concurrency.
+- Logging and DLQ payload do not expose sensitive data beyond safe event identifiers and original event payload already present on Kafka.
+
+---
+
+### Fix Reviewer-Agent Findings for Remaining Phase 5 Event Processing
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When was it done?: 2026-06-10 14:13 Europe/Berlin
+Which files changed?:
+- `src/main/java/com/game/backend/config/MatchResultKafkaConsumerConfig.java`
+- `src/main/java/com/game/backend/game/repository/MatchResultProcessedEventRepository.java`
+- `src/main/java/com/game/backend/game/repository/NotificationJobRepository.java`
+- `src/main/java/com/game/backend/game/service/MatchResultIngestionService.java`
+- `src/main/java/com/game/backend/game/service/MatchResultDlqPublisher.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorker.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorkerProperties.java`
+- `src/main/java/com/game/backend/game/service/LoggingNotificationDispatcher.java`
+- `src/main/java/com/game/backend/game/domain/NotificationJob.java`
+- `src/main/resources/application-local.yml`
+- `src/test/java/com/game/backend/game/MatchResultConsumerIntegrationTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultConsumerTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultDlqPublisherTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultIngestionServiceTest.java`
+- `src/test/java/com/game/backend/game/service/NotificationWorkerTest.java`
+- `specs/2026-05-31-phase-5-remaining-event-processing/prompts.md`
+- `tasks.md`
+
+What decisions were made?:
+- Restricted match-result consumer retries to explicit transient categories instead of retrying every runtime exception.
+- Converted match-result dedupe marker creation to MySQL `INSERT IGNORE` so concurrent duplicate delivery resolves as `DUPLICATE`.
+- Added deterministic player existence validation so missing-player events are skipped as invalid input instead of treated as transient DLQ failures.
+- Prevented stale out-of-order match-result events from overwriting newer projections or creating stale notifications.
+- Removed full original Kafka payload from DLQ records and now sends a structured metadata map through the configured JSON serializer.
+- Split notification worker processing into claim, dispatch, and finalize phases so DB locks are not held during dispatch.
+- Added stale `PROCESSING` job requeue behavior with configurable timeout.
+- Removed player id from notification dispatch/retry/permanent-failure logs.
+
+What was skipped?:
+- Did not change roadmap checkboxes; Validation Agent should still produce `validation-report.md`.
+- Did not introduce DLQ replay tooling or external notification provider integration.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=MatchResult*Test,Notification*Test,*Dlq*Test" test` passed.
+- `mvn -q -DskipTests=false test` passed.
+- Added/updated tests for:
+  - invalid missing-player event skip/no-DLQ behavior
+  - dedupe insert race returning duplicate without side effects
+  - stale projection event not overwriting or notifying
+  - DLQ payload metadata without `originalPayload`
+  - match-result and notification worker metric counters
+  - notification worker claim before dispatch/finalization behavior
+
+What problems happened?:
+- Initial targeted test run failed because DLQ test expected `originalOffset` as `Integer`; corrected expectation to `Long`.
+- Test output includes known non-blocking Mockito dynamic-agent warnings, embedded Kafka shutdown logs, and Redis reconnect warnings during container teardown.
+
+What should the reviewer check?:
+- Retry classifier covers the intended transient exception set and does not route deterministic validation failures to DLQ.
+- MySQL-specific `INSERT IGNORE` and `FOR UPDATE SKIP LOCKED` usage is acceptable for the approved MySQL stack.
+- Notification worker stale-processing timeout is appropriate for expected dispatch duration.
+- Stale out-of-order match-result events should be skipped rather than generating notifications.
+
+### Fix Second Reviewer-Agent Findings for Remaining Phase 5 Event Processing
+Status: IN_PROGRESS
+Who did it?: Builder Agent
+When?: 2026-06-10 17:19 Europe/Berlin
+
+What changed?:
+- Replaced match-result projection read-then-write mutation with a MySQL atomic upsert that applies the `occurred_at` freshness rule inside the database statement.
+- Added `claim_token` ownership to durable notification jobs and indexed it for conditional finalize paths.
+- Changed notification job claim/finalize flow so `SENT`, `RETRY_WAIT`, and `FAILED_PERMANENT` updates only apply when the worker still owns the active claim token.
+- Changed stale `PROCESSING` handling to fail timed-out jobs permanently instead of requeueing them for possible duplicate live dispatch.
+- Added max-attempt protection to notification job claiming so exhausted jobs are not dispatched again.
+- Added integration coverage for retryable match-result listener failures routing to `match-results.v1.dlq` after retries.
+- Updated test Kafka wiring so raw match-result input still uses string serialization while DLQ publishing verifies structured JSON payload serialization.
+
+Files changed:
+- `src/main/resources/db/migration/V5__phase5_remaining_event_processing.sql`
+- `src/main/java/com/game/backend/game/domain/NotificationJob.java`
+- `src/main/java/com/game/backend/game/repository/MatchResultProjectionRepository.java`
+- `src/main/java/com/game/backend/game/repository/NotificationJobRepository.java`
+- `src/main/java/com/game/backend/game/service/MatchResultIngestionService.java`
+- `src/main/java/com/game/backend/game/service/NotificationWorker.java`
+- `src/test/java/com/game/backend/game/MatchResultConsumerIntegrationTest.java`
+- `src/test/java/com/game/backend/game/service/MatchResultIngestionServiceTest.java`
+- `src/test/java/com/game/backend/game/service/NotificationWorkerTest.java`
+- `tasks.md`
+
+What decisions were made?:
+- Used MySQL `ON DUPLICATE KEY UPDATE` rather than service-level retry on duplicate-key conflict, because the approved stack is MySQL and the freshness rule needs to be atomic.
+- Used claim-token fencing for notification finalization instead of holding database locks during provider dispatch.
+- Treated stale `PROCESSING` timeout as permanent failure rather than requeue, because the worker cannot prove the original dispatch is no longer in flight.
+
+What was skipped?:
+- Did not introduce heartbeat/lease extension infrastructure; that would be a broader architecture decision.
+- Did not update roadmap checkboxes; Validation Agent still needs to produce `validation-report.md`.
+
+How was it tested?:
+- `mvn -q -DskipTests compile` passed.
+- `mvn -q -DskipTests=false "-Dtest=MatchResult*Test,Notification*Test,*Dlq*Test" test` passed.
+- `mvn -q -DskipTests=false test` passed.
+- Added/updated tests for:
+  - atomic projection upsert race behavior
+  - notification stale processing timeout permanent failure
+  - notification lost-claim finalization fencing
+  - retry-exhausted transient match-result failure DLQ routing
+
+What problems happened?:
+- Initial DLQ integration test exposed that the test context's default producer used `StringSerializer` for structured DLQ maps.
+- Switching the application producer to JSON serialization also affected raw string input publishing, so the test now uses a dedicated string-serializer input producer.
+- Test output includes known non-blocking Mockito dynamic-agent warnings, embedded Kafka shutdown logs, and Redis reconnect warnings during container teardown.
+
+What should the reviewer check?:
+- Atomic projection upsert SQL matches the intended stale-event semantics.
+- Stale `PROCESSING` timeout as permanent failure is the intended operational trade-off.
+- Claim-token fencing prevents late worker finalization from overwriting another ownership state.
+- DLQ test wiring reflects production serialization assumptions.
+
+---
 ## Phase 6: Scale and Reliability
 
 ### Task Group
